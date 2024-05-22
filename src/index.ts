@@ -1,55 +1,69 @@
+// HTTP biblioteka skirta HTTP serveriams
+import * as fs  from 'fs';
+
+// Failinės sistemos biblioteka skirta darbui su failais
 import http from 'http';
 
+//Susikuriame serverio objektą
+const server=http.createServer((req,res)=>{
+    const method=req.method;
+    const url=req.url;
+    console.log(`Metodas: ${method}, URL: ${url}`);
 
+    if (url=='/calculate' && method=='POST'){
+        //Saugomi duomenų "gabalai"
+        const reqBody:any[]=[];
+        //Funkcija kuri iškviečiama kai gaunamas duomenų gabalas
+        req.on('data', (d)=>{
+            console.log(`Gaunami duomenys`);
+            console.log(`Duomenys: ${d}`);
+            //Kiekvieną duomenų gabalą įdedame į masyvą
+            reqBody.push(d);
+        });
 
-const server = http.createServer((req, res)=>{
+        //Funkcija kuri iškviečiama kai baigiami siųsti duomenys (visi duomenų gabalai gauti)
+        req.on('end',()=>{
+            console.log(`Baigti siųsti duomenys`);
+            //Sujungiame visus gabalus į vieną sąrašą ir paverčiame į string'ą
+            const reqData=Buffer.concat(reqBody).toString();
+            const va=reqData.split('&');
+            const x=parseFloat(va[0].split('=')[1]);
+            const y=parseFloat(va[1].split('=')[1]);
+            console.log(`Visi gauti duomenys: ${reqData}`);
+            console.log(va);
 
-const url=req.url;
-console.log(url);
-
-const method=req.method;
-console.log(method);
-
-//Daugiklio pasirinkimas
-let daugiklis=1;
-if (url!=null){
-daugiklis = parseInt(url?.split("/")[1]);
-}
-
-
-
-
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('vartotojas', 'jonas');
-    res.write("<!DOCTYPE html>");
-    res.write("<html>");
-
-    res.write("<head>");
-    res.write("<title>Daugybos lentele</title>");
-    res.write("</head>");
-    res.write("<body>");
-
-for (let i=1; i<=10; i++){
-    res.write(`<a href="/${i}">${i}</a>&nbsp;&nbsp;`);
-}
-
-    res.write(`<h1>${daugiklis} Daugybos lentele</h1>`);
-    res.write("<table border='1'>");
-    for (let i=1; i<=10; i++ ){
-        res.write("<tr>");
-        res.write(`<td>${i}</td><td>*</td><td>${daugiklis}</td><td>=</td><td>${i*daugiklis}</td>`);
-        res.write("</tr>");
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            //Nuskaitome failą result.html (į buffer tipo kintamąjį, ir paverčiame į stringą)
+            let template=fs.readFileSync('templates/result.html').toString();
+            //Pakeičiame tekstą template {{ result }} į suskaičiuotą rezultatą 
+            template=template.replace('{{ result }}',`Rezultatas: ${x*y}`);
+            res.write(template);
+            res.end();
+        });
+        return;
     }
 
+    if (url=='/'){
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        const template=fs.readFileSync('templates/index.html');
+        res.write(template);
+        return res.end();
+    }
+
+
+    //Jei puslapis nebuvo rastas
+    res.writeHead(404, {
+        "Content-Type":"text/html; charset=utf-8"
+    });
    
-    res.write("</table>");
+    const template=fs.readFileSync('templates/404.html');
+    res.write(template);
+    return res.end();
 
 
 
-    res.write("<body>");
-    res.write("</html>");
-    res.end();
-
-
+    
+    
 });
-server.listen(3000, 'localhost');
+
+server.listen(2999,'localhost');
