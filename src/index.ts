@@ -2,107 +2,191 @@ import mysql from 'mysql2';
 import { Student } from './models/student';
 import http from 'http'
 import fs from 'fs';
+import path from 'path';
 
-//kintamasis kuris rodo ar mes prisijungia prie duomenu bazes
+//Kintamasis kuris rodo ar mes prisijungę prie duomenų bazės
 let connected=false;
-//Si dalus sukuria prisijungima prie duomenu bases 
+
+// Ši dalis sukuria prisijungimą prie duomenų bazės
 const con=mysql.createConnection({
     host:"localhost",
-    user: "root",
-    password: "LabasRytas",
-    port: 3306,
-    database: "students"
+    user:"root",
+    password:"LabasRytas",
+    database:"students"
 });
 
-
-//Prisijungi apire duomenu bases
+//Prisijungia prie duomenų bazės
 // con.connect();
-// con.connect(funkcija kuri bus vykdoma po prisijungimo)
+// con.connect( funkcija kuri bus vykdoma po prisijungimo )
 con.connect((error:any)=>{
-    if(error) throw error;
+ if (error) throw error;
 
-//Po prisijungimo be klaidos, nustatome jog esame prisijunge prie DB
-connected=true;
+ //Po prisijungimo be klaidos, nustatome jog esame prisijungę prie DB
+ connected=true;
 
-
-    console.log("Prisijungta");
-    
-    
-    });
-
-//sukuriame http serveri ir paduodame funkcija kuri bus vygdoma kai ateis uzklausa
-const server=http.createServer((req, res)=>{
-const url=req.url;
-const method = req.method;
-
-/*
-//Jei kaskas atejo i puslapi su GET metodu i url: localhost:2999/students, Galime jam issiusti JSON formatu duomenis
-if (url=='/students' && method=='GET'){
-if (connected){
-con.query<Student[]>("SELECT * FROM students WHERE sex='vyras' ORDER BY name ASC", (error, result)=>{
-        if (error) throw error;
-        res.setHeader("Content-Type", "text/JSON; charset=utf-8");
-        res.write(JSON.stringify(result));
-
-        res.end();
+ console.log("Prisijungta");
+ 
 });
-}
-}
-*/
-
-//Dalis skirta statiniem failam isvesti
 
 
 
+//Sukuriame http serverį ir paduodame f-ją kuri bus vykdoma kai ateis užklausa
+const server=http.createServer((req, res)=>{
+    const url=req.url;
+    const method=req.method;
+    
 
+    /*
+    //Jei kažkas atėjo į puslapį su GET metodu į url: localhost:2999/students, Galime jam išsiųsti JSON formatu duomenis
+    if (url=='/students' && method=='GET'){
+        if (connected){
+            con.query<Student[]>("SELECT * FROM students ORDER BY name ASC;", (error,result)=>{
+                if (error) throw error;
+                res.setHeader("Content-Type", "text/JSON; charset=utf-8");
+                res.write(JSON.stringify(result));        
+                res.end();
+            });   
+        }
+    }
+    */
 
+    //Dalis skirta statiniem failam išvesti
+    let filePath=`public${url}`;
+    // fs.existsSync("kelias iki failo")  - patikrina ar failas,katalogas, likas egzistuoja, jei taip, tai garažina 'true', jei ne 'false'
+    // fs.lstatSync(filePath).isFile()  -patikrina ar tai failas (ne katalogas, nuoroda, įrenginys)
+    if (fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()){
+        const ext=path.extname(filePath);
+        switch (ext) {
+            case ".css":
+                res.setHeader("Content-Type", "text/css; charset=utf-8");
+                break;
+            case ".js":
+                res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+                break;
+            case ".jpg":
+            case ".png":
+            case ".jpeg":
+                res.setHeader("Content-Type", "image/jpg; charset=utf-8");
+                break;
+        
+        }
+        let file=fs.readFileSync(filePath);
+        res.write(file);
+        return res.end();
+    }
 
-//Jei kaskas atejo i puslapi su GET metodu i url: localhost:2999/students, issiunciame jam studentu sarasa HTML formatu
-if (url=='/students' && method=='GET'){
-if (connected){
-    con.query<Student[]>("SELECT * FROM students ORDER BY name ASC", (error, result)=>{
-        if (error) throw error;
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        let rows="";
-        result.forEach((s)=>{
-       rows+="<tr>";
-                    rows+=`<td>${s.name}</td> <td>${s.surname}</td> <td>${s.phone}</td> <td> <a href='/student/${s.id}' class="btn btn-success">Plačiau</a></td>`;
+    //Jei kažkas atėjo į puslapį su GET metodu į url: localhost:2999/students, išsiunčiame jam studentų sąrašą HTML formatu
+    if (url=='/students' && method=='GET'){
+        if (connected){
+            con.query<Student[]>("SELECT * FROM students ORDER BY name ASC;", (error,result)=>{
+                if (error) throw error;
+                res.setHeader("Content-Type", "text/html; charset=utf-8");
+                let rows="";
+                result.forEach((s)=>{ 
+                    rows+="<tr>";
+                    rows+=`<td>${s.name}</td> <td>${s.surname}</td> <td>${s.phone}</td> <td> <a href='/student/${s.id}' class="btn btn-success">Plačiau</a> <a href='/delete/${s.id}' class="btn btn-danger">Ištrinti</a></td>`;
                     rows+="</tr>";
+                });
+               
+                let template=fs.readFileSync('templates/students.html').toString();
+                template=template.replace('{{ students_table }}', rows);
+                
+              
+                res.write(template);        
+                res.end();
+            });   
+        }
+    }
+
+    //Funkcija iškviečiame kai pridėjimo lange paspaudžiame submit mygtuką 
+    if (url=='/add' && method=='POST'){
+        if (connected){
+           const reqBody:any[]=[];
+           req.on('data', (d)=>{
+                reqBody.push(d);
+           });
+           req.on('end', ()=>{
+            
+                const reqData=decodeURIComponent(Buffer.concat(reqBody).toString());
+                const dd=reqData.split('&');
+                console.log(dd); 
+                //Išsiskaldysime duomenis į atskirus kintamuosius
+                const name= mysql.escape(dd[0].split('=')[1]);
+                const surname=mysql.escape(dd[1].split('=')[1]);
+                const phone=mysql.escape(dd[2].split('=')[1]);
+                const sex=mysql.escape(dd[3].split('=')[1]);
+                const birthday=mysql.escape(dd[4].split('=')[1]);
+                const email=mysql.escape(dd[5].split('=')[1]);
+
+                const sql=`INSERT INTO students(name, surname, phone, sex, birthday, email) VALUES (${name}, ${surname}, ${phone}, ${sex}, ${birthday}, ${email})`;
+                con.query(sql, (error)=>{
+                    if (error) throw error;
+                });
+
+                res.writeHead(302, {
+                    'Location':'/students'
+                })
+                res.end();
+           });
+
+
+        } 
+    }
+
+    
+
+    //Funkcija iškviečiame kai ateiname į pridėjimo langą
+    if (url=='/add' && method=='GET'){
+        if (connected){
+            let template=fs.readFileSync('templates/add.html').toString();
+            res.write(template);
+            res.end();
+        } 
+    }
+
+    //Vieno studento atvaizdavimas, kai url = localhost:2999/student/5
+    console.log(url?.split("/"));
+    if ( url?.split("/")[1] == 'student' ){
+        //Pasiimame iš url id
+        let id=parseInt(url?.split("/")[2]);
+        con.query<Student[]>(`SELECT * FROM students WHERE id=${id};`, (error,result)=>{
+            if (error) throw error;
+            let student=result[0];
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            
+            let template=fs.readFileSync('templates/student.html').toString();
+            template=template.replace("{{ name }}", student.name);
+            template=template.replace("{{ surname }}", student.surname);
+            template=template.replace("{{ phone }}", student.phone!=null?student.phone:'-');
+            template=template.replace("{{ sex }}", student.sex!=null?student.sex:'-');
+            template=template.replace("{{ email }}", student.email!=null?student.email:'-');
+            template=template.replace("{{ birthday }}", student.birthday!=null?student.birthday.toLocaleDateString():'-');
+            
+          
+            res.write(template);        
+            res.end();
         });
         
-        let template=fs.readFileSync('templates/students.html').toString();
-        template=template.replace('{{ students_table }}', rows);
-        res.write(template);
-        res.end();
-});
-}
-}
-//Vieno studento atvaizdavimas, kai url = localhost:2999/student/5
-if (url?.split("/")[1] == 'student'){
-    //pasiimame is url id
-    let id=parseInt(url?.split("/")[2]);
-    con.query<Student[]>(`SELECT * FROM students WHERE id=${id};`, (error, result)=>{
-        if (error) throw error;
-        let student=result[0];
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-     
         
-        let template=fs.readFileSync('templates/student.html').toString();
-       template=template.replace("{{name}}", student.name);
-       template=template.replace("{{surname}}", student.surname);
-       template=template.replace("{{phone}}", student.phone!=null?student.phone:'-');
-       template=template.replace("{{sex}}", student.sex!=null?student.sex:'-');
-       template=template.replace("{{birthday}}", student.birthday!=null?student.birthday.toLocaleDateString():'-');
-       template=template.replace("{{email}}", student.email!=null?student.email:'-');
+    }
 
-        res.write(template)
-        res.end();
+    if ( url?.split("/")[1] == 'delete' ){
+        //Pasiimame iš url id
+        let id=parseInt(url?.split("/")[2]);
+        con.query<Student[]>(`DELETE FROM students WHERE id=${id};`, (error,result)=>{
+            if (error) throw error;
+            res.writeHead(302, {
+                'Location':'/students'
+            })
+            res.end();
+        });
+        
+        
+    }
+
+    
+
 });
 
-}
-
-
-
-});
-//Paleidziame serveri
-server.listen(2999, 'localhost');
+//Paleidžiame serverį
+server.listen(2999,'localhost');

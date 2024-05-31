@@ -16,37 +16,48 @@
                 <div class="card mt-5">
                     <div class="card-header">Studentų sarašas</div>
                     <div class="card-body">
-                        <form>
+                        <form action="/add" method="post">
                             <div class="mb-3">
                                 <label class="form-label">Studento vardas:</label>
-                                <input class="form-control" type="text" name="" value="{{ name }}">
+                                <input class="form-control" type="text" name="name">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Studento pavardė:</label>
-                                <input class="form-control" type="text" name="" value="{{ surname }}">
+                                <input class="form-control" type="text" name="surname">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Telefonas:</label>
-                                <input class="form-control" type="text" name="" value="{{ phone }}">
+                                <input class="form-control" type="text" name="phone">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Lytis:</label>
-                                <input class="form-control" type="text" name="" value="{{ sex }}">
+                                <select class="form-control" name="sex">
+                                    <option value="" selected></option>
+                                    <option value="vyras">Vyras</option>
+                                    <option value="moteris">Moteris</option>
+
+                                </select>
+
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Gimimo data:</label>
-                                <input class="form-control" type="text" name="" value="{{ birthday }}">
+                                <input class="form-control" type="datetime" name="birthday">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">El. paštas:</label>
-                                <input class="form-control" type="text" name="" value="{{ email }}">
+                                <input class="form-control" type="text" name="email">
                             </div>
+                            <button name="add" type="submit" class="btn btn-success">Pridėti</button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</body>
+
+</html>
+</div>
 </body>
 
 </html>
